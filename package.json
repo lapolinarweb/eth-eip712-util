@@ -3,6 +3,7 @@
   "version": "2.3.0",
   "description": "Generate hashes of typed ethereum data for signing",
   "main": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "node test/index.js"
   },
@@ -28,6 +29,7 @@
     "ethereumjs-util": "^5.1.1"
   },
   "devDependencies": {
+    "@types/node": "^12.6.9",
     "tape": "^4.9.1"
   }
 }
