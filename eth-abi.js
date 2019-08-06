@@ -1,11 +1,8 @@
-// Extracted from https://github.com/ethereumjs/ethereumjs-abi
+// Extracted from https://github.com/ethereumjs/ethereumjs-abi and stripped out irrelevant code
 // Original code licensed under the MIT License - Copyright (c) 2015 Alex Beregszaszi
 
-const utils = require('ethereumjs-util')
+const ethUtil = require('ethereumjs-util')
 const BN = require('bn.js')
-
-var ABI = function () {
-}
 
 // Convert from short to canonical names
 // FIXME: optimise or make this nicer?
@@ -28,16 +25,6 @@ function elementaryName (name) {
     return 'ufixed128x128'
   }
   return name
-}
-
-ABI.eventID = function (name, types) {
-  // FIXME: use node.js util.format?
-  var sig = name + '(' + types.map(elementaryName).join(',') + ')'
-  return utils.sha3(new Buffer(sig))
-}
-
-ABI.methodID = function (name, types) {
-  return ABI.eventID(name, types).slice(0, 4)
 }
 
 // Parse N from type<N>
@@ -63,8 +50,8 @@ function parseTypeArray (type) {
 function parseNumber (arg) {
   var type = typeof arg
   if (type === 'string') {
-    if (utils.isHexPrefixed(arg)) {
-      return new BN(utils.stripHexPrefix(arg), 16)
+    if (ethUtil.isHexPrefixed(arg)) {
+      return new BN(ethUtil.stripHexPrefix(arg), 16)
     } else {
       return new BN(arg, 10)
     }
@@ -75,30 +62,6 @@ function parseNumber (arg) {
     return arg
   } else {
     throw new Error('Argument is not a number')
-  }
-}
-
-// someMethod(bytes,uint)
-// someMethod(bytes,uint):(boolean)
-function parseSignature (sig) {
-  var tmp = /^(\w+)\((.+)\)$/.exec(sig)
-  if (tmp.length !== 3) {
-    throw new Error('Invalid method signature')
-  }
-
-  var args = /^(.+)\):\((.+)$/.exec(tmp[2])
-
-  if (args !== null && args.length === 3) {
-    return {
-      method: tmp[1],
-      args: args[1].split(','),
-      retargs: args[2].split(',')
-    }
-  } else {
-    return {
-      method: tmp[1],
-      args: tmp[2].split(',')
-    }
   }
 }
 
@@ -142,7 +105,7 @@ function encodeSingle (type, arg) {
     ret = Buffer.concat([ encodeSingle('uint256', arg.length), arg ])
 
     if ((arg.length % 32) !== 0) {
-      ret = Buffer.concat([ ret, utils.zeros(32 - (arg.length % 32)) ])
+      ret = Buffer.concat([ ret, ethUtil.zeros(32 - (arg.length % 32)) ])
     }
 
     return ret
@@ -152,7 +115,7 @@ function encodeSingle (type, arg) {
       throw new Error('Invalid bytes<N> width: ' + size)
     }
 
-    return utils.setLengthRight(arg, 32)
+    return ethUtil.setLengthRight(arg, 32)
   } else if (type.startsWith('uint')) {
     size = parseTypeN(type)
     if ((size % 8) || (size < 8) || (size > 256)) {
@@ -200,128 +163,6 @@ function encodeSingle (type, arg) {
   throw new Error('Unsupported or invalid type: ' + type)
 }
 
-// Decodes a single item (can be dynamic array)
-// @returns: array
-// FIXME: this method will need a lot of attention at checking limits and validation
-function decodeSingle (parsedType, data, offset) {
-  if (typeof parsedType === 'string') {
-    parsedType = parseType(parsedType)
-  }
-  var size, num, ret, i
-
-  if (parsedType.name === 'address') {
-    return decodeSingle(parsedType.rawType, data, offset).toArrayLike(Buffer, 'be', 20).toString('hex')
-  } else if (parsedType.name === 'bool') {
-    return decodeSingle(parsedType.rawType, data, offset).toString() === new BN(1).toString()
-  } else if (parsedType.name === 'string') {
-    var bytes = decodeSingle(parsedType.rawType, data, offset)
-    return new Buffer(bytes, 'utf8').toString()
-  } else if (parsedType.isArray) {
-    // this part handles fixed-length arrays ([2]) and variable length ([]) arrays
-    // NOTE: we catch here all calls to arrays, that simplifies the rest
-    ret = []
-    size = parsedType.size
-
-    if (parsedType.size === 'dynamic') {
-      offset = decodeSingle('uint256', data, offset).toNumber()
-      size = decodeSingle('uint256', data, offset).toNumber()
-      offset = offset + 32
-    }
-    for (i = 0; i < size; i++) {
-      var decoded = decodeSingle(parsedType.subArray, data, offset)
-      ret.push(decoded)
-      offset += parsedType.subArray.memoryUsage
-    }
-    return ret
-  } else if (parsedType.name === 'bytes') {
-    offset = decodeSingle('uint256', data, offset).toNumber()
-    size = decodeSingle('uint256', data, offset).toNumber()
-    return data.slice(offset + 32, offset + 32 + size)
-  } else if (parsedType.name.startsWith('bytes')) {
-    return data.slice(offset, offset + parsedType.size)
-  } else if (parsedType.name.startsWith('uint')) {
-    num = new BN(data.slice(offset, offset + 32), 16, 'be')
-    if (num.bitLength() > parsedType.size) {
-      throw new Error('Decoded int exceeds width: ' + parsedType.size + ' vs ' + num.bitLength())
-    }
-    return num
-  } else if (parsedType.name.startsWith('int')) {
-    num = new BN(data.slice(offset, offset + 32), 16, 'be').fromTwos(256)
-    if (num.bitLength() > parsedType.size) {
-      throw new Error('Decoded uint exceeds width: ' + parsedType.size + ' vs ' + num.bitLength())
-    }
-
-    return num
-  } else if (parsedType.name.startsWith('ufixed')) {
-    size = new BN(2).pow(new BN(parsedType.size[1]))
-    num = decodeSingle('uint256', data, offset)
-    if (!num.mod(size).isZero()) {
-      throw new Error('Decimals not supported yet')
-    }
-    return num.div(size)
-  } else if (parsedType.name.startsWith('fixed')) {
-    size = new BN(2).pow(new BN(parsedType.size[1]))
-    num = decodeSingle('int256', data, offset)
-    if (!num.mod(size).isZero()) {
-      throw new Error('Decimals not supported yet')
-    }
-    return num.div(size)
-  }
-  throw new Error('Unsupported or invalid type: ' + parsedType.name)
-}
-
-// Parse the given type
-// @returns: {} containing the type itself, memory usage and (including size and subArray if applicable)
-function parseType (type) {
-  var size
-  var ret
-  if (isArray(type)) {
-    size = parseTypeArray(type)
-    var subArray = type.slice(0, type.lastIndexOf('['))
-    subArray = parseType(subArray)
-    ret = {
-      isArray: true,
-      name: type,
-      size: size,
-      memoryUsage: size === 'dynamic' ? 32 : subArray.memoryUsage * size,
-      subArray: subArray
-    }
-    return ret
-  } else {
-    var rawType
-    switch (type) {
-      case 'address':
-        rawType = 'uint160'
-        break
-      case 'bool':
-        rawType = 'uint8'
-        break
-      case 'string':
-        rawType = 'bytes'
-        break
-    }
-    ret = {
-      rawType: rawType,
-      name: type,
-      memoryUsage: 32
-    }
-
-    if (type.startsWith('bytes') && type !== 'bytes' || type.startsWith('uint') || type.startsWith('int')) {
-      ret.size = parseTypeN(type)
-    } else if (type.startsWith('ufixed') || type.startsWith('fixed')) {
-      ret.size = parseTypeNxM(type)
-    }
-
-    if (type.startsWith('bytes') && type !== 'bytes' && (ret.size < 1 || ret.size > 32)) {
-      throw new Error('Invalid bytes<N> width: ' + ret.size)
-    }
-    if ((type.startsWith('uint') || type.startsWith('int')) && (ret.size % 8 || ret.size < 8 || ret.size > 256)) {
-      throw new Error('Invalid int/uint<N> width: ' + ret.size)
-    }
-    return ret
-  }
-}
-
 // Is a type dynamic?
 function isDynamic (type) {
   // FIXME: handle all types? I don't think anything is missing now
@@ -336,7 +177,7 @@ function isArray (type) {
 // Encode a method/event with arguments
 // @types an array of string type names
 // @args  an array of the appropriate values
-ABI.rawEncode = function (types, values) {
+function rawEncode (types, values) {
   var output = []
   var data = []
 
@@ -360,74 +201,7 @@ ABI.rawEncode = function (types, values) {
   return Buffer.concat(output.concat(data))
 }
 
-ABI.rawDecode = function (types, data) {
-  var ret = []
-  data = new Buffer(data)
-  var offset = 0
-  for (var i in types) {
-    var type = elementaryName(types[i])
-    var parsed = parseType(type, data, offset)
-    var decoded = decodeSingle(parsed, data, offset)
-    offset += parsed.memoryUsage
-    ret.push(decoded)
-  }
-  return ret
-}
-
-ABI.simpleEncode = function (method) {
-  var args = Array.prototype.slice.call(arguments).slice(1)
-  var sig = parseSignature(method)
-
-  // FIXME: validate/convert arguments
-  if (args.length !== sig.args.length) {
-    throw new Error('Argument count mismatch')
-  }
-
-  return Buffer.concat([ ABI.methodID(sig.method, sig.args), ABI.rawEncode(sig.args, args) ])
-}
-
-ABI.simpleDecode = function (method, data) {
-  var sig = parseSignature(method)
-
-  // FIXME: validate/convert arguments
-  if (!sig.retargs) {
-    throw new Error('No return values in method')
-  }
-
-  return ABI.rawDecode(sig.retargs, data)
-}
-
-function stringify (type, value) {
-  if (type.startsWith('address') || type.startsWith('bytes')) {
-    return '0x' + value.toString('hex')
-  } else {
-    return value.toString()
-  }
-}
-
-ABI.stringify = function (types, values) {
-  var ret = []
-
-  for (var i in types) {
-    var type = types[i]
-    var value = values[i]
-
-    // if it is an array type, concat the items
-    if (/^[^\[]+\[.*\]$/.test(type)) {
-      value = value.map(function (item) {
-        return stringify(type, item)
-      }).join(', ')
-    } else {
-      value = stringify(type, value)
-    }
-
-    ret.push(value)
-  }
-
-  return ret
-}
-
-ABI.solidityPack = function (types, values) {
+function solidityPack (types, values) {
   if (types.length !== values.length) {
     throw new Error('Number of types are not matching the values')
   }
@@ -446,14 +220,14 @@ ABI.solidityPack = function (types, values) {
     } else if (type === 'bool') {
       ret.push(new Buffer(value ? '01' : '00', 'hex'))
     } else if (type === 'address') {
-      ret.push(utils.setLengthLeft(value, 20))
+      ret.push(ethUtil.setLengthLeft(value, 20))
     } else if (type.startsWith('bytes')) {
       size = parseTypeN(type)
       if (size < 1 || size > 32) {
         throw new Error('Invalid bytes<N> width: ' + size)
       }
 
-      ret.push(utils.setLengthRight(value, size))
+      ret.push(ethUtil.setLengthRight(value, size))
     } else if (type.startsWith('uint')) {
       size = parseTypeN(type)
       if ((size % 8) || (size < 8) || (size > 256)) {
@@ -487,74 +261,12 @@ ABI.solidityPack = function (types, values) {
   return Buffer.concat(ret)
 }
 
-ABI.soliditySHA3 = function (types, values) {
-  return utils.sha3(ABI.solidityPack(types, values))
+function soliditySHA3 (types, values) {
+  return ethUtil.sha3(solidityPack(types, values))
 }
 
-ABI.soliditySHA256 = function (types, values) {
-  return utils.sha256(ABI.solidityPack(types, values))
+module.exports = {
+  rawEncode,
+  solidityPack,
+  soliditySHA3
 }
-
-ABI.solidityRIPEMD160 = function (types, values) {
-  return utils.ripemd160(ABI.solidityPack(types, values), true)
-}
-
-// Serpent's users are familiar with this encoding
-// - s: string
-// - b: bytes
-// - b<N>: bytes<N>
-// - i: int256
-// - a: int256[]
-
-function isNumeric (c) {
-  // FIXME: is this correct? Seems to work
-  return (c >= '0') && (c <= '9')
-}
-
-// For a "documentation" refer to https://github.com/ethereum/serpent/blob/develop/preprocess.cpp
-ABI.fromSerpent = function (sig) {
-  var ret = []
-  for (var i = 0; i < sig.length; i++) {
-    var type = sig[i]
-    if (type === 's') {
-      ret.push('bytes')
-    } else if (type === 'b') {
-      var tmp = 'bytes'
-      var j = i + 1
-      while ((j < sig.length) && isNumeric(sig[j])) {
-        tmp += sig[j] - '0'
-        j++
-      }
-      i = j - 1
-      ret.push(tmp)
-    } else if (type === 'i') {
-      ret.push('int256')
-    } else if (type === 'a') {
-      ret.push('int256[]')
-    } else {
-      throw new Error('Unsupported or invalid type: ' + type)
-    }
-  }
-  return ret
-}
-
-ABI.toSerpent = function (types) {
-  var ret = []
-  for (var i = 0; i < types.length; i++) {
-    var type = types[i]
-    if (type === 'bytes') {
-      ret.push('s')
-    } else if (type.startsWith('bytes')) {
-      ret.push('b' + parseTypeN(type))
-    } else if (type === 'int256') {
-      ret.push('i')
-    } else if (type === 'int256[]') {
-      ret.push('a')
-    } else {
-      throw new Error('Unsupported or invalid type: ' + type)
-    }
-  }
-  return ret.join('')
-}
-
-module.exports = ABI
