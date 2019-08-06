@@ -1,5 +1,5 @@
 const ethUtil = require('ethereumjs-util')
-const ethAbi = require('ethereumjs-abi')
+const ethAbi = require('./eth-abi')
 
 const TYPED_MESSAGE_SCHEMA = {
   type: 'object',
