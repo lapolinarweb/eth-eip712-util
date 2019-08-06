@@ -1,7 +1,7 @@
 // Extracted from https://github.com/ethereumjs/ethereumjs-abi and stripped out irrelevant code
 // Original code licensed under the MIT License - Copyright (c) 2015 Alex Beregszaszi
 
-const ethUtil = require('ethereumjs-util')
+const ethUtil = require('./eth-util')
 const BN = require('bn.js')
 
 // Convert from short to canonical names

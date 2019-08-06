@@ -1,4 +1,4 @@
-const ethUtil = require('ethereumjs-util')
+const ethUtil = require('./eth-util')
 const ethAbi = require('./eth-abi')
 
 const TYPED_MESSAGE_SCHEMA = {
