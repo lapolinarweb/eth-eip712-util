@@ -24,11 +24,15 @@
     "url": "https://github.com/CoinbaseWallet/eth-eip712-util/issues"
   },
   "homepage": "https://github.com/CoinbaseWallet/eth-eip712-util#readme",
-  "dependencies": {
-    "ethereumjs-util": "^5.1.1"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^12.6.9",
+    "@types/node": "^12.7.0",
+    "bn.js": "^5.0.0",
+    "keccak": "^2.0.0",
     "tape": "^4.9.1"
+  },
+  "peerDependencies": {
+    "bn.js": "^5.0.0",
+    "keccak": "^2.0.0"
   }
 }
