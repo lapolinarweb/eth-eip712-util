@@ -46,14 +46,14 @@ const TypedDataUtils = {
         if (types[type] !== undefined) {
           return ['bytes32', value == null ?
             '0x0000000000000000000000000000000000000000000000000000000000000000' :
-            ethUtil.sha3(this.encodeData(type, value, types, useV4))]
+            ethUtil.keccak(this.encodeData(type, value, types, useV4))]
         }
 
         if(value === undefined)
           throw new Error(`missing value for field ${name} of type ${type}`)
 
         if (type === 'bytes') {
-          return ['bytes32', ethUtil.sha3(value)]
+          return ['bytes32', ethUtil.keccak(value)]
         }
 
         if (type === 'string') {
@@ -61,14 +61,14 @@ const TypedDataUtils = {
           if (typeof value === 'string') {
             value = Buffer.from(value, 'utf8')
           }
-          return ['bytes32', ethUtil.sha3(value)]
+          return ['bytes32', ethUtil.keccak(value)]
         }
 
         if (type.lastIndexOf(']') === type.length - 1) {
           const parsedType = type.slice(0, type.lastIndexOf('['))
           const typeValuePairs = value.map(item =>
             encodeField(name, parsedType, item))
-          return ['bytes32', ethUtil.sha3(ethAbi.rawEncode(
+          return ['bytes32', ethUtil.keccak(ethAbi.rawEncode(
             typeValuePairs.map(([type]) => type),
             typeValuePairs.map(([, value]) => value),
           ))]
@@ -88,7 +88,7 @@ const TypedDataUtils = {
         if (value !== undefined) {
           if (field.type === 'bytes') {
             encodedTypes.push('bytes32')
-            value = ethUtil.sha3(value)
+            value = ethUtil.keccak(value)
             encodedValues.push(value)
           } else if (field.type === 'string') {
             encodedTypes.push('bytes32')
@@ -96,11 +96,11 @@ const TypedDataUtils = {
             if (typeof value === 'string') {
               value = Buffer.from(value, 'utf8')
             }
-            value = ethUtil.sha3(value)
+            value = ethUtil.keccak(value)
             encodedValues.push(value)
           } else if (types[field.type] !== undefined) {
             encodedTypes.push('bytes32')
-            value = ethUtil.sha3(this.encodeData(field.type, value, types, useV4))
+            value = ethUtil.keccak(this.encodeData(field.type, value, types, useV4))
             encodedValues.push(value)
           } else if (field.type.lastIndexOf(']') === field.type.length - 1) {
             throw new Error('Arrays currently unimplemented in encodeData')
@@ -165,7 +165,7 @@ const TypedDataUtils = {
    * @returns {string} - Hash of an object
    */
   hashStruct (primaryType, data, types, useV4 = true) {
-    return ethUtil.sha3(this.encodeData(primaryType, data, types, useV4))
+    return ethUtil.keccak(this.encodeData(primaryType, data, types, useV4))
   },
 
   /**
@@ -176,7 +176,7 @@ const TypedDataUtils = {
    * @returns {string} - Hash of an object
    */
   hashType (primaryType, types) {
-    return ethUtil.sha3(this.encodeType(primaryType, types))
+    return ethUtil.keccak(this.encodeType(primaryType, types))
   },
 
   /**
@@ -209,7 +209,7 @@ const TypedDataUtils = {
     if (sanitizedData.primaryType !== 'EIP712Domain') {
       parts.push(this.hashStruct(sanitizedData.primaryType, sanitizedData.message, sanitizedData.types, useV4))
     }
-    return ethUtil.sha3(Buffer.concat(parts))
+    return ethUtil.keccak(Buffer.concat(parts))
   },
 }
 

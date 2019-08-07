@@ -50,7 +50,7 @@ function parseTypeArray (type) {
 function parseNumber (arg) {
   var type = typeof arg
   if (type === 'string') {
-    if (ethUtil.isHexPrefixed(arg)) {
+    if (ethUtil.isHexString(arg)) {
       return new BN(ethUtil.stripHexPrefix(arg), 16)
     } else {
       return new BN(arg, 10)
@@ -220,7 +220,7 @@ function solidityPack (types, values) {
     } else if (type === 'bool') {
       ret.push(new Buffer(value ? '01' : '00', 'hex'))
     } else if (type === 'address') {
-      ret.push(ethUtil.setLengthLeft(value, 20))
+      ret.push(ethUtil.setLength(value, 20))
     } else if (type.startsWith('bytes')) {
       size = parseTypeN(type)
       if (size < 1 || size > 32) {
@@ -262,7 +262,7 @@ function solidityPack (types, values) {
 }
 
 function soliditySHA3 (types, values) {
-  return ethUtil.sha3(solidityPack(types, values))
+  return ethUtil.keccak(solidityPack(types, values))
 }
 
 module.exports = {

@@ -1,6 +1,6 @@
 const test = require('tape')
 const sigUtil = require('../')
-const ethUtil = require('ethereumjs-util')
+const ethUtil = require('../eth-util')
 
 test('hashForSignTypedDataLegacy - single message', function (t) {
   t.plan(1)
