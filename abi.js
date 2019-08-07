@@ -1,7 +1,7 @@
 // Extracted from https://github.com/ethereumjs/ethereumjs-abi and stripped out irrelevant code
 // Original code licensed under the MIT License - Copyright (c) 2015 Alex Beregszaszi
 
-const ethUtil = require('./eth-util')
+const util = require('./util')
 const BN = require('bn.js')
 
 // Convert from short to canonical names
@@ -50,8 +50,8 @@ function parseTypeArray (type) {
 function parseNumber (arg) {
   var type = typeof arg
   if (type === 'string') {
-    if (ethUtil.isHexString(arg)) {
-      return new BN(ethUtil.stripHexPrefix(arg), 16)
+    if (util.isHexString(arg)) {
+      return new BN(util.stripHexPrefix(arg), 16)
     } else {
       return new BN(arg, 10)
     }
@@ -105,7 +105,7 @@ function encodeSingle (type, arg) {
     ret = Buffer.concat([ encodeSingle('uint256', arg.length), arg ])
 
     if ((arg.length % 32) !== 0) {
-      ret = Buffer.concat([ ret, ethUtil.zeros(32 - (arg.length % 32)) ])
+      ret = Buffer.concat([ ret, util.zeros(32 - (arg.length % 32)) ])
     }
 
     return ret
@@ -115,7 +115,7 @@ function encodeSingle (type, arg) {
       throw new Error('Invalid bytes<N> width: ' + size)
     }
 
-    return ethUtil.setLengthRight(arg, 32)
+    return util.setLengthRight(arg, 32)
   } else if (type.startsWith('uint')) {
     size = parseTypeN(type)
     if ((size % 8) || (size < 8) || (size > 256)) {
@@ -220,14 +220,14 @@ function solidityPack (types, values) {
     } else if (type === 'bool') {
       ret.push(new Buffer(value ? '01' : '00', 'hex'))
     } else if (type === 'address') {
-      ret.push(ethUtil.setLength(value, 20))
+      ret.push(util.setLength(value, 20))
     } else if (type.startsWith('bytes')) {
       size = parseTypeN(type)
       if (size < 1 || size > 32) {
         throw new Error('Invalid bytes<N> width: ' + size)
       }
 
-      ret.push(ethUtil.setLengthRight(value, size))
+      ret.push(util.setLengthRight(value, size))
     } else if (type.startsWith('uint')) {
       size = parseTypeN(type)
       if ((size % 8) || (size < 8) || (size > 256)) {
@@ -262,7 +262,7 @@ function solidityPack (types, values) {
 }
 
 function soliditySHA3 (types, values) {
-  return ethUtil.keccak(solidityPack(types, values))
+  return util.keccak(solidityPack(types, values))
 }
 
 module.exports = {

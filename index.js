@@ -1,5 +1,5 @@
-const ethUtil = require('./eth-util')
-const ethAbi = require('./eth-abi')
+const util = require('./util')
+const abi = require('./abi')
 
 const TYPED_MESSAGE_SCHEMA = {
   type: 'object',
@@ -46,14 +46,14 @@ const TypedDataUtils = {
         if (types[type] !== undefined) {
           return ['bytes32', value == null ?
             '0x0000000000000000000000000000000000000000000000000000000000000000' :
-            ethUtil.keccak(this.encodeData(type, value, types, useV4))]
+            util.keccak(this.encodeData(type, value, types, useV4))]
         }
 
         if(value === undefined)
           throw new Error(`missing value for field ${name} of type ${type}`)
 
         if (type === 'bytes') {
-          return ['bytes32', ethUtil.keccak(value)]
+          return ['bytes32', util.keccak(value)]
         }
 
         if (type === 'string') {
@@ -61,14 +61,14 @@ const TypedDataUtils = {
           if (typeof value === 'string') {
             value = Buffer.from(value, 'utf8')
           }
-          return ['bytes32', ethUtil.keccak(value)]
+          return ['bytes32', util.keccak(value)]
         }
 
         if (type.lastIndexOf(']') === type.length - 1) {
           const parsedType = type.slice(0, type.lastIndexOf('['))
           const typeValuePairs = value.map(item =>
             encodeField(name, parsedType, item))
-          return ['bytes32', ethUtil.keccak(ethAbi.rawEncode(
+          return ['bytes32', util.keccak(abi.rawEncode(
             typeValuePairs.map(([type]) => type),
             typeValuePairs.map(([, value]) => value),
           ))]
@@ -88,7 +88,7 @@ const TypedDataUtils = {
         if (value !== undefined) {
           if (field.type === 'bytes') {
             encodedTypes.push('bytes32')
-            value = ethUtil.keccak(value)
+            value = util.keccak(value)
             encodedValues.push(value)
           } else if (field.type === 'string') {
             encodedTypes.push('bytes32')
@@ -96,11 +96,11 @@ const TypedDataUtils = {
             if (typeof value === 'string') {
               value = Buffer.from(value, 'utf8')
             }
-            value = ethUtil.keccak(value)
+            value = util.keccak(value)
             encodedValues.push(value)
           } else if (types[field.type] !== undefined) {
             encodedTypes.push('bytes32')
-            value = ethUtil.keccak(this.encodeData(field.type, value, types, useV4))
+            value = util.keccak(this.encodeData(field.type, value, types, useV4))
             encodedValues.push(value)
           } else if (field.type.lastIndexOf(']') === field.type.length - 1) {
             throw new Error('Arrays currently unimplemented in encodeData')
@@ -112,7 +112,7 @@ const TypedDataUtils = {
       }
     }
 
-    return ethAbi.rawEncode(encodedTypes, encodedValues)
+    return abi.rawEncode(encodedTypes, encodedValues)
   },
 
   /**
@@ -165,7 +165,7 @@ const TypedDataUtils = {
    * @returns {string} - Hash of an object
    */
   hashStruct (primaryType, data, types, useV4 = true) {
-    return ethUtil.keccak(this.encodeData(primaryType, data, types, useV4))
+    return util.keccak(this.encodeData(primaryType, data, types, useV4))
   },
 
   /**
@@ -176,7 +176,7 @@ const TypedDataUtils = {
    * @returns {string} - Hash of an object
    */
   hashType (primaryType, types) {
-    return ethUtil.keccak(this.encodeType(primaryType, types))
+    return util.keccak(this.encodeType(primaryType, types))
   },
 
   /**
@@ -209,7 +209,7 @@ const TypedDataUtils = {
     if (sanitizedData.primaryType !== 'EIP712Domain') {
       parts.push(this.hashStruct(sanitizedData.primaryType, sanitizedData.message, sanitizedData.types, useV4))
     }
-    return ethUtil.keccak(Buffer.concat(parts))
+    return util.keccak(Buffer.concat(parts))
   },
 }
 
@@ -239,7 +239,7 @@ function typedSignatureHashLegacy(typedData) {
   if (typeof typedData !== 'object' || !typedData.length) throw error
 
   const data = typedData.map(function (e) {
-    return e.type === 'bytes' ? ethUtil.toBuffer(e.value) : e.value
+    return e.type === 'bytes' ? util.toBuffer(e.value) : e.value
   })
   const types = typedData.map(function (e) { return e.type })
   const schema = typedData.map(function (e) {
@@ -247,11 +247,11 @@ function typedSignatureHashLegacy(typedData) {
     return e.type + ' ' + e.name
   })
 
-  return ethAbi.soliditySHA3(
+  return abi.soliditySHA3(
     ['bytes32', 'bytes32'],
     [
-      ethAbi.soliditySHA3(new Array(typedData.length).fill('string'), schema),
-      ethAbi.soliditySHA3(types, data)
+      abi.soliditySHA3(new Array(typedData.length).fill('string'), schema),
+      abi.soliditySHA3(types, data)
     ]
   )
 }
