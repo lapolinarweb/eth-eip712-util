@@ -1,6 +1,6 @@
 {
   "name": "eth-eip712-util",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Generate hashes of typed ethereum data for signing",
   "main": "index.js",
   "types": "index.d.ts",
@@ -26,13 +26,13 @@
   "homepage": "https://github.com/CoinbaseWallet/eth-eip712-util#readme",
   "dependencies": {},
   "devDependencies": {
-    "@types/node": "^12.7.0",
-    "bn.js": "^5.0.0",
-    "keccak": "^2.0.0",
-    "tape": "^4.9.1"
+    "@types/node": "^13.7.2",
+    "bn.js": "^5.1.1",
+    "keccak": "^3.0.0",
+    "tape": "^4.13.0"
   },
   "peerDependencies": {
-    "bn.js": "^5.0.0",
-    "keccak": "^2.0.0"
+    "bn.js": ">4.0.0",
+    "keccak": ">2.0.0"
   }
 }
